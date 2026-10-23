@@ -1,0 +1,567 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#214f3b">
+  <title>时间管理计划</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <svg class="icon-sprite" aria-hidden="true">
+    <symbol id="i-calendar" viewBox="0 0 24 24">
+      <rect x="3" y="5" width="18" height="16" rx="4"></rect>
+      <path d="M7 3v4M17 3v4M3 10h18M7 14h3M14 14h3M7 18h3"></path>
+    </symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24">
+      <path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"></path>
+      <circle cx="12" cy="10" r="2.5"></circle>
+    </symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="9"></circle>
+      <path d="M12 7v5l3 2"></path>
+    </symbol>
+    <symbol id="i-tree" viewBox="0 0 24 24">
+      <path d="M12 21v-8M8 21h8"></path>
+      <path d="M12 3c3 0 5 2 5 5 2 0 4 2 4 4.5S19 17 16 17H8c-3 0-5-2-5-4.5S5 8 7 8c0-3 2-5 5-5Z"></path>
+    </symbol>
+    <symbol id="i-sprout" viewBox="0 0 24 24">
+      <path d="M12 21V10M12 14c-4 0-7-2-7-6 4 0 7 2 7 6ZM12 11c0-4 3-6 7-6 0 4-3 6-7 6Z"></path>
+    </symbol>
+    <symbol id="i-book" viewBox="0 0 24 24">
+      <path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H12v18H7.5A3.5 3.5 0 0 0 4 23V5.5ZM20 5.5A3.5 3.5 0 0 0 16.5 2H12v18h4.5A3.5 3.5 0 0 1 20 23V5.5Z"></path>
+    </symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24">
+      <path d="M12 5v14M5 12h14"></path>
+    </symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24">
+      <path d="M12 16V4M7 9l5-5 5 5M5 15v4h14v-4"></path>
+    </symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24">
+      <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9ZM10 21h4"></path>
+    </symbol>
+    <symbol id="i-check" viewBox="0 0 24 24">
+      <path d="m5 12 4 4L19 6"></path>
+    </symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24">
+      <path d="m14 5 5 5M4 20l4-1 11-11-4-4L4 15l-1 5Z"></path>
+    </symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24">
+      <path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"></path>
+    </symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24">
+      <path d="M5 12h14M14 7l5 5-5 5"></path>
+    </symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="4"></circle>
+      <path d="M12 2v2M12 20v2M2 12h2M20 12h2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"></path>
+    </symbol>
+    <symbol id="i-cloud" viewBox="0 0 24 24">
+      <path d="M7 18h10a3.5 3.5 0 0 0 .4-7A6 6 0 0 0 6.2 10 4 4 0 0 0 7 18Z"></path>
+    </symbol>
+    <symbol id="i-rain" viewBox="0 0 24 24">
+      <path d="M7 15h10a3.5 3.5 0 0 0 .4-7A6 6 0 0 0 6.2 7 4 4 0 0 0 7 15ZM8 18l-1 2M13 18l-1 2M18 18l-1 2"></path>
+    </symbol>
+    <symbol id="i-x" viewBox="0 0 24 24">
+      <path d="m6 6 12 12M18 6 6 18"></path>
+    </symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24">
+      <path d="M4 7h16M4 12h16M4 17h16"></path>
+    </symbol>
+    <symbol id="i-route" viewBox="0 0 24 24">
+      <circle cx="6" cy="18" r="2"></circle>
+      <circle cx="18" cy="6" r="2"></circle>
+      <path d="M8 18h3a3 3 0 0 0 3-3V9a3 3 0 0 1 3-3"></path>
+    </symbol>
+    <symbol id="i-broom" viewBox="0 0 24 24">
+      <path d="m14 4 6 6M12 6l6 6-7 7H5v-6l7-7Z"></path>
+      <path d="m5 19-2 2M8 16l-2 4M11 16l-2 4"></path>
+    </symbol>
+    <symbol id="i-water" viewBox="0 0 24 24">
+      <path d="M12 3S6 10 6 15a6 6 0 0 0 12 0c0-5-6-12-6-12Z"></path>
+    </symbol>
+    <symbol id="i-chevron-down" viewBox="0 0 24 24">
+      <path d="m6 9 6 6 6-6"></path>
+    </symbol>
+  </svg>
+
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <span class="brand-sun"></span>
+          <span class="brand-hill"></span>
+          <span class="brand-stem"></span>
+        </div>
+        <div>
+          <div class="brand-name">时间管理计划</div>
+          <div class="brand-sub">TIME MANAGEMENT PLAN</div>
+        </div>
+      </div>
+
+      <div class="side-greeting">
+        <strong id="greetingText">早上好，suslov</strong>
+      </div>
+
+      <nav class="main-nav" aria-label="主要分区">
+        <button class="nav-item active" type="button" data-page="schedule">
+          <span class="nav-icon"><svg><use href="#i-calendar"></use></svg></span>
+          <span><b>今日行动</b><small>潜入课表与认知地图</small></span>
+          <span class="nav-count" id="scheduleCount">0</span>
+        </button>
+        <button class="nav-item" type="button" data-page="chores">
+          <span class="nav-icon"><svg><use href="#i-tree"></use></svg></span>
+          <span><b>日常事务</b><small>清理生活的认知目标</small></span>
+          <span class="nav-count warm" id="choreCount">0</span>
+        </button>
+        <button class="nav-item" type="button" data-page="urgent">
+          <span class="nav-icon"><svg><use href="#i-sprout"></use></svg></span>
+          <span><b>突发警报</b><small>击倒突然出现的阴影</small></span>
+          <span class="nav-count coral" id="urgentCount">0</span>
+        </button>
+        <button class="nav-item" type="button" data-page="habits">
+          <span class="nav-icon"><svg><use href="#i-book"></use></svg></span>
+          <span><b>每日靶场</b><small>每天用飞刀命中目标</small></span>
+          <span class="nav-count green" id="habitCount">0</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <div class="mini-weather">
+          <div class="weather-heading">
+            <span>WEATHER / 上海</span>
+            <button class="weather-replay" type="button" data-action="replay-date-transition">日期转场</button>
+          </div>
+          <div class="weather-days" id="weatherDays">
+            <div class="weather-loading">正在读取天气…</div>
+          </div>
+          <div class="weather-source" id="weatherSource">本地示例预报</div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="mobile-menu" id="mobileMenu" type="button" aria-label="打开导航">
+            <svg><use href="#i-menu"></use></svg>
+          </button>
+          <div>
+            <div class="top-kicker" id="topKicker">HEIST CONTROL</div>
+            <div class="top-date" id="topDate">10月23日 · 星期五</div>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <div class="live-clock">
+            <span class="live-dot"></span>
+            <span id="liveClock">10:24</span>
+          </div>
+          <div class="sync-state" id="syncState" data-status="local">
+            <i></i>
+            <span id="syncStatusText">本机模式</span>
+          </div>
+          <button class="icon-btn" id="notificationBtn" type="button" aria-label="开启浏览器提醒" data-tooltip="开启浏览器提醒">
+            <svg><use href="#i-bell"></use></svg>
+            <span class="notify-state" id="notifyState"></span>
+          </button>
+          <button class="avatar-btn" type="button" id="profileBtn" aria-label="个人设置">
+            <span class="avatar-face">S</span>
+            <span class="avatar-copy"><b id="profileNameLabel">suslov</b><small>心之农夫</small></span>
+            <svg><use href="#i-chevron-down"></use></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="main-content">
+        <section class="page active" id="page-schedule" data-page-panel="schedule">
+          <div class="page-heading reveal">
+            <div>
+              <div class="eyebrow"><span></span> TODAY'S HEIST ROUTE</div>
+              <h1>今天的路线，<em>已经锁定。</em></h1>
+              <p>课表已识别至 12 月 25 日，单双周与行动地点会自动切换。</p>
+            </div>
+            <div class="heading-actions">
+              <button class="btn secondary" type="button" data-action="open-import">
+                <svg><use href="#i-upload"></use></svg> 导入课表
+              </button>
+              <button class="btn primary" type="button" data-action="add-event">
+                <svg><use href="#i-plus"></use></svg> 添加日程
+              </button>
+            </div>
+          </div>
+
+          <div class="today-ribbon reveal delay-1" id="todayRibbon"></div>
+
+          <div class="schedule-layout">
+            <article class="panel timetable-panel reveal delay-2">
+              <div class="panel-head">
+                <div>
+                  <div class="section-label">PALACE TIMETABLE</div>
+                  <h2>行动时刻表</h2>
+                </div>
+                <div class="week-controls">
+                  <button class="text-btn" type="button" data-action="prev-week" aria-label="上一周">
+                    <svg class="flip"><use href="#i-arrow"></use></svg>
+                  </button>
+                  <button class="week-label" type="button" data-action="this-week" id="weekLabel">本周</button>
+                  <button class="text-btn" type="button" data-action="next-week" aria-label="下一周">
+                    <svg><use href="#i-arrow"></use></svg>
+                  </button>
+                </div>
+              </div>
+              <div class="week-strip" id="weekStrip"></div>
+              <div class="timeline-wrap">
+                <div class="timeline" id="timeline"></div>
+              </div>
+              <div class="timeline-legend">
+                <span><i class="dot lecture"></i>课程</span>
+                <span><i class="dot personal"></i>个人安排</span>
+                <span><i class="dot urgent-event"></i>突发占用</span>
+                <span class="legend-tip">点击时间块可编辑</span>
+              </div>
+            </article>
+
+            <article class="panel map-panel p5-map-panel reveal delay-3">
+              <div class="panel-head">
+                <div class="p5-map-title">
+                  <div class="section-label">认知校园</div>
+                  <h2><span>校园</span>路线图</h2>
+                </div>
+                <button class="round-action p5-map-action" type="button" data-action="edit-commute" aria-label="编辑通勤时间" data-tooltip="编辑通勤时间">
+                  <svg><use href="#i-route"></use></svg>
+                </button>
+              </div>
+              <div class="map-status" id="mapStatus"></div>
+              <div class="farm-map p5-map" id="farmMap" aria-label="红黑漫画风校园地图">
+                <div class="p5-map-marquee" aria-hidden="true">
+                  <span>校园认知地图</span><span>今日路线</span><span>实时位置</span>
+                </div>
+                <div class="map-edge-frame" aria-hidden="true"><span></span></div>
+                <div class="p5-map-stamp" aria-hidden="true">心之<br>校园</div>
+                <div class="p5-cut-line l1" aria-hidden="true"></div>
+                <div class="p5-cut-line l2" aria-hidden="true"></div>
+                <div class="p5-map-noise" aria-hidden="true"></div>
+                <div class="p5-cityscape" aria-hidden="true">
+                  <i class="p5-block b1"></i><i class="p5-block b2"></i><i class="p5-block b3"></i>
+                  <i class="p5-block b4"></i><i class="p5-block b5"></i><i class="p5-block b6"></i>
+                  <i class="p5-block b7"></i><i class="p5-block b8"></i>
+                  <span class="p5-street-label street-a">中央大道</span>
+                  <span class="p5-street-label street-b">安全通道</span>
+                  <span class="p5-star-burst star-a">✦</span>
+                  <span class="p5-star-burst star-b">✦</span>
+                  <span class="p5-map-eye"></span>
+                </div>
+                <div class="map-sky">
+                  <span class="cloud c1"></span><span class="cloud c2"></span>
+                </div>
+                <div class="map-hills"></div>
+                <svg class="map-path" viewBox="0 0 700 430" preserveAspectRatio="none" aria-hidden="true">
+                  <g id="mapRouteLines"></g>
+                </svg>
+                <div class="map-location" id="mapLocations"></div>
+                <div class="map-avatar" id="mapAvatar" aria-live="polite">
+                  <span class="avatar-bubble" id="avatarBubble">在这里</span>
+                  <span class="avatar-body">S</span>
+                  <span class="avatar-shadow"></span>
+                </div>
+                <div class="map-decor barn" aria-hidden="true">
+                  <span class="barn-roof"></span><span class="barn-body"></span><span class="barn-door"></span>
+                </div>
+                <div class="map-decor pond" aria-hidden="true"><span></span></div>
+                <div class="map-tree t1" aria-hidden="true"><i></i><i></i><b></b></div>
+                <div class="map-tree t2" aria-hidden="true"><i></i><i></i><b></b></div>
+                <div class="map-flower f1" aria-hidden="true"></div>
+                <div class="map-flower f2" aria-hidden="true"></div>
+                <div class="map-flower f3" aria-hidden="true"></div>
+                <button class="map-zoom-trigger" type="button" data-action="zoom-map" aria-label="放大校园路线图">
+                  <svg><use href="#i-plus"></use></svg><span>点击放大</span>
+                </button>
+              </div>
+              <div class="next-trip" id="nextTrip"></div>
+            </article>
+          </div>
+
+          <div class="schedule-lower">
+            <article class="mini-panel reveal delay-3">
+              <div class="mini-title">
+                <span class="icon-chip mint"><svg><use href="#i-clock"></use></svg></span>
+                <div><h3>当天时间线</h3><p>按时间顺序的下一站</p></div>
+              </div>
+              <div class="today-list" id="todayList"></div>
+            </article>
+            <article class="mini-panel reveal delay-4">
+              <div class="mini-title">
+                <span class="icon-chip yellow"><svg><use href="#i-route"></use></svg></span>
+                <div><h3>出门提醒</h3><p>根据通勤时间提前出发</p></div>
+              </div>
+              <div class="departure-card" id="departureCard"></div>
+            </article>
+          </div>
+        </section>
+
+        <section class="page" id="page-chores" data-page-panel="chores">
+          <div class="page-heading">
+            <div>
+              <div class="eyebrow"><span></span> COGNITIVE JOBS</div>
+              <h1>把生活杂事，<em>变成潜入目标。</em></h1>
+              <p>每件日常事务都有冷却与警戒阶段，完成它们就能清空这片认知区域。</p>
+            </div>
+            <div class="heading-actions">
+              <button class="btn secondary" type="button" data-action="chore-help">
+                <svg><use href="#i-book"></use></svg> 生长说明
+              </button>
+              <button class="btn primary" type="button" data-action="add-chore">
+                <svg><use href="#i-plus"></use></svg> 种下新事务
+              </button>
+            </div>
+          </div>
+
+          <div class="orchard-layout">
+            <article class="panel orchard-panel">
+              <div class="orchard-top">
+                <div class="orchard-title">
+                  <div class="section-label">COGNITIVE TARGETS</div>
+                  <h2>认知事务看板</h2>
+                </div>
+                <div class="harvest-count"><b id="readyChores">0</b><span>个目标可下手</span></div>
+              </div>
+              <div class="tree-scene">
+                <div class="sky-decor sun-disc"></div>
+                <div class="sky-decor cloud soft-cloud one"></div>
+                <div class="sky-decor cloud soft-cloud two"></div>
+                <div class="far-hill hill-one"></div>
+                <div class="far-hill hill-two"></div>
+                <div class="tree-ground"></div>
+                <div class="tree-shadow"></div>
+                <div class="tree-trunk">
+                  <span class="trunk-line l1"></span>
+                  <span class="trunk-line l2"></span>
+                </div>
+                <div class="tree-branch br1"></div>
+                <div class="tree-branch br2"></div>
+                <div class="tree-branch br3"></div>
+                <div class="canopy">
+                  <span class="leaf-blob b1"></span><span class="leaf-blob b2"></span><span class="leaf-blob b3"></span>
+                  <span class="leaf-blob b4"></span><span class="leaf-blob b5"></span><span class="leaf-blob b6"></span>
+                  <span class="leaf-blob b7"></span><span class="leaf-blob b8"></span>
+                </div>
+                <div class="tree-fruits" id="treeFruits"></div>
+                <div class="falling-fruit" id="fallingFruit" aria-hidden="true"></div>
+                <div class="ground-grass g1"></div><div class="ground-grass g2"></div><div class="ground-grass g3"></div>
+              </div>
+              <div class="p5-heist-board" id="p5HeistBoard" aria-label="日常事务潜入目标板"></div>
+              <div class="tree-legend">
+                <span><i class="fruit-dot green"></i>刚种下</span>
+                <span><i class="fruit-dot yellow"></i>快成熟</span>
+                <span><i class="fruit-dot red"></i>正当熟</span>
+                <span><i class="fruit-dot brown"></i>掉落了</span>
+              </div>
+            </article>
+
+            <aside class="panel chore-side">
+              <div class="panel-head">
+                <div>
+                  <div class="section-label">TODAY'S TARGETS</div>
+                  <h2>今日下手目标</h2>
+                </div>
+                <span class="soft-badge" id="orchardDate">周五</span>
+              </div>
+              <div class="chore-list" id="choreList"></div>
+              <div class="chore-advice" id="choreAdvice"></div>
+            </aside>
+          </div>
+
+          <div class="rhythm-strip">
+            <div class="rhythm-intro">
+              <span class="icon-chip coral"><svg><use href="#i-tree"></use></svg></span>
+              <div><h3>认知冷却阶段</h3><p>越久没有处理，事务就会逐渐进入警戒状态。</p></div>
+            </div>
+            <div class="rhythm-stages">
+              <div class="rhythm-stage"><span class="stage-fruit fresh"></span><b>冷却</b><small>刚刚完成</small></div>
+              <div class="rhythm-arrow"></div>
+              <div class="rhythm-stage"><span class="stage-fruit ripening"></span><b>警戒</b><small>周期将近</small></div>
+              <div class="rhythm-arrow"></div>
+              <div class="rhythm-stage"><span class="stage-fruit ready"></span><b>可下手</b><small>立即处理</small></div>
+              <div class="rhythm-arrow"></div>
+              <div class="rhythm-stage"><span class="stage-fruit fallen"></span><b>失控</b><small>已被阴影占据</small></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="page" id="page-urgent" data-page-panel="urgent">
+          <div class="page-heading">
+            <div>
+              <div class="eyebrow coral"><span></span> SHADOW ALERT</div>
+              <h1>突发阴影，<em>击倒就好。</em></h1>
+              <p>临时任务会化成阴影怪物；它们占据的时间会自动出现在行动时刻表里。</p>
+            </div>
+            <div class="heading-actions">
+              <button class="btn secondary" type="button" data-action="weed-help">
+                <svg><use href="#i-book"></use></svg> 战斗说明
+              </button>
+              <button class="btn primary coral-btn" type="button" data-action="add-urgent">
+                <svg><use href="#i-plus"></use></svg> 生成阴影怪物
+              </button>
+            </div>
+          </div>
+
+          <div class="weed-summary" id="weedSummary"></div>
+
+          <div class="meadow-layout">
+            <article class="panel meadow-panel">
+              <div class="meadow-top">
+                <div>
+                  <div class="section-label">SHADOW NEST</div>
+                  <h2>阴影巢穴</h2>
+                </div>
+                <div class="weed-legend">
+                  <span><i class="priority-dot low"></i>不急</span>
+                  <span><i class="priority-dot medium"></i>有点急</span>
+                  <span><i class="priority-dot high"></i>很着急</span>
+                </div>
+              </div>
+              <div class="meadow-scene">
+                <div class="meadow-sun"></div>
+                <div class="meadow-cloud mc1"></div><div class="meadow-cloud mc2"></div>
+                <div class="meadow-fence"></div>
+                <div class="weed-ground"></div>
+                <div class="weeds" id="weeds"></div>
+                <div class="meadow-hill mh1"></div><div class="meadow-hill mh2"></div>
+                <div class="mowing-debris" id="mowingDebris"></div>
+                <div class="meadow-sign">SHADOW<br>ZONE</div>
+                <div class="sparkle s1"></div><div class="sparkle s2"></div><div class="sparkle s3"></div>
+              </div>
+            </article>
+
+            <aside class="panel weed-side">
+              <div class="panel-head">
+                <div>
+                  <div class="section-label">SHADOW LIST</div>
+                  <h2>阴影警报清单</h2>
+                </div>
+                <span class="soft-badge danger" id="overdueWeeds">0 已过期</span>
+              </div>
+              <div class="weed-list" id="weedList"></div>
+            </aside>
+          </div>
+
+          <div class="completion-note">
+            <span class="completion-icon"><svg><use href="#i-broom"></use></svg></span>
+            <div>
+              <b>击破 = 清除警报</b>
+              <p>击破阴影后，它会和行动时刻表中的占用时间一起消散。</p>
+            </div>
+            <button class="text-link" type="button" data-action="show-completed">查看已击破的阴影 <svg><use href="#i-arrow"></use></svg></button>
+          </div>
+        </section>
+
+        <section class="page" id="page-habits" data-page-panel="habits">
+          <div class="page-heading">
+            <div>
+              <div class="eyebrow green"><span></span> DAILY TARGET RANGE</div>
+              <h1>每天一刀，<em>命中你的目标。</em></h1>
+              <p>每次完成打卡，飞刀都会钉上靶心，并撕下新的一页日期。</p>
+            </div>
+            <div class="heading-actions">
+              <button class="btn secondary" type="button" data-action="habit-history">
+                <svg><use href="#i-calendar"></use></svg> 全部记录
+              </button>
+              <button class="btn primary" type="button" data-action="add-habit">
+                <svg><use href="#i-plus"></use></svg> 种下一株
+              </button>
+            </div>
+          </div>
+
+          <div class="habit-stats" id="habitStats"></div>
+
+          <div class="habits-heading">
+            <div>
+              <div class="section-label">MY DAILY TARGETS</div>
+              <h2>今日靶场</h2>
+            </div>
+            <div class="checkin-key"><i></i> 刀痕代表当天命中</div>
+          </div>
+          <div class="habit-grid" id="habitGrid"></div>
+
+          <div class="habit-bottom">
+            <article class="panel streak-panel">
+              <div class="streak-copy">
+                <span class="icon-chip coral"><svg><use href="#i-sun"></use></svg></span>
+                <div>
+                  <div class="section-label">HIT RECORD</div>
+                  <h2>本月命中记录</h2>
+                  <p>红色越深，代表当天击中的目标越多。</p>
+                </div>
+              </div>
+              <div class="month-grid" id="monthGrid"></div>
+              <div class="month-legend"><span>少</span><i class="lvl0"></i><i class="lvl1"></i><i class="lvl2"></i><i class="lvl3"></i><i class="lvl4"></i><span>多</span></div>
+            </article>
+            <article class="panel reminder-panel">
+              <div class="reminder-top">
+                <span class="icon-chip yellow"><svg><use href="#i-bell"></use></svg></span>
+                <span class="reminder-status"><i></i><span id="reminderStatusText">页面内提醒已开启</span></span>
+              </div>
+              <h2>每日事项提醒</h2>
+              <p>浏览器提醒开启后，会在每日事项到达设定时间时提醒你。</p>
+              <button class="btn dark-full" type="button" id="enableNotifyHabit">
+                <svg><use href="#i-bell"></use></svg> 开启浏览器提醒
+              </button>
+              <small>提醒只在本页面打开时工作，不会上传任何数据。</small>
+            </article>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="modalBackdrop" hidden>
+    <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-head">
+        <div>
+          <div class="section-label" id="modalKicker">NEW PLANT</div>
+          <h2 id="modalTitle">添加内容</h2>
+        </div>
+        <button class="modal-close" type="button" data-action="close-modal" aria-label="关闭">
+          <svg><use href="#i-x"></use></svg>
+        </button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+    </div>
+  </div>
+
+  <div class="toast-region" id="toastRegion" aria-live="polite" aria-atomic="true"></div>
+  <div class="confetti-layer" id="confettiLayer" aria-hidden="true"></div>
+  <div class="p5-date-transition" id="p5DateTransition" aria-hidden="true">
+    <div class="date-transition-bg"></div>
+    <div class="date-transition-slash slash-red"></div>
+    <div class="date-transition-slash slash-black"></div>
+    <div class="date-transition-card">
+      <div class="dt-top">
+        <span>DATE SHIFT // TIME MANAGEMENT PLAN</span>
+        <small id="dtOld">FROM 10.22 THU</small>
+      </div>
+      <div class="dt-main">
+        <div class="dt-week">
+          <b id="dtWeekEn">FRI</b>
+          <span id="dtWeekCn">星期五</span>
+        </div>
+        <div class="dt-date">
+          <span id="dtMonth">10</span>
+          <i>/</i>
+          <strong id="dtDay">23</strong>
+        </div>
+      </div>
+      <div class="dt-bottom">
+        <span id="dtYear">2026</span>
+        <b>CLOSE THE DAY / OPEN THE NEXT</b>
+      </div>
+    </div>
+    <div class="date-transition-star star-one">✦</div>
+    <div class="date-transition-star star-two">✦</div>
+    <div class="date-transition-stamp">NEXT<br>DAY</div>
+    <div class="sr-only" id="dtAnnouncement" aria-live="polite"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
