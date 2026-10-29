@@ -2571,4 +2571,7 @@
     checkReminders();
   }, 30000);
   setInterval(loadWeather, 30 * 60 * 1000);
+  if ("serviceWorker" in navigator && /^https?:$/.test(window.location.protocol)) {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  }
 })();

@@ -15,6 +15,11 @@
 
 打开 `index.html`，或下载 `suslov-offline.html` 后直接在浏览器中使用。
 
+## iPad 主屏幕图标
+
+在 Safari 中打开网站，点击“分享”→“添加到主屏幕”，图标会自动使用
+`assets/apple-touch-icon.png`。高清封面位于 `assets/icon-1024.png`。
+
 ## 局域网同步
 
 1. 在电脑上双击 `start-server.cmd`。
