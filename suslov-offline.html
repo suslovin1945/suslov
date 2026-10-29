@@ -9683,6 +9683,10 @@ body::before {
   const SUPABASE_URL = "https://rfdomwrugsgkkclflucz.supabase.co";
   const SUPABASE_KEY = "sb_publishable_7OkfpeKBiBOHQc77uDRv4A_0TCFXB10";
   const CLOUD_SESSION_KEY = "suslov-cloud-session-v1";
+  const GITHUB_SYNC_OWNER = "suslovin1945";
+  const GITHUB_SYNC_REPO = "suslov-sync";
+  const GITHUB_SYNC_PATH = "state.json";
+  const GITHUB_TOKEN_KEY = "suslov-github-sync-token-v1";
   const DAY_NAMES = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
   const DAY_FULL = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"];
   const DAY_SHORT = ["一", "二", "三", "四", "五", "六", "日"];
@@ -10099,6 +10103,9 @@ body::before {
       return null;
     }
   })();
+  let githubToken = localStorage.getItem(GITHUB_TOKEN_KEY) || "";
+  let githubFileSha = "";
+  let githubRevision = 0;
   const notifiedKeys = new Set();
 
   function saveState() {
@@ -10320,8 +10327,103 @@ body::before {
     }
   }
 
+  function encodeBase64Utf8(value) {
+    const bytes = new TextEncoder().encode(value);
+    let binary = "";
+    bytes.forEach((byte) => { binary += String.fromCharCode(byte); });
+    return btoa(binary);
+  }
+
+  function decodeBase64Utf8(value) {
+    const binary = atob(String(value || "").replace(/\s/g, ""));
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  }
+
+  function githubHeaders() {
+    return {
+      "Authorization": `Bearer ${githubToken}`,
+      "Accept": "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "Content-Type": "application/json"
+    };
+  }
+
+  async function syncWithGitHub() {
+    if (!githubToken || syncInFlight) return false;
+    syncInFlight = true;
+    let succeeded = false;
+    try {
+      setSyncStatus("syncing", "同步中");
+      const contentUrl = `https://api.github.com/repos/${GITHUB_SYNC_OWNER}/${GITHUB_SYNC_REPO}/contents/${GITHUB_SYNC_PATH}`;
+      let remote = null;
+      const pullResponse = await fetch(`${contentUrl}?ref=main&t=${Date.now()}`, {
+        headers: githubHeaders(),
+        cache: "no-store",
+        signal: AbortSignal.timeout(15000)
+      });
+      if (pullResponse.ok) {
+        const file = await pullResponse.json();
+        githubFileSha = file.sha;
+        const parsed = JSON.parse(decodeBase64Utf8(file.content));
+        remote = parsed;
+      } else if (pullResponse.status !== 404) {
+        throw new Error(pullResponse.status === 401 ? "GitHub 令牌无效或没有仓库权限" : "GitHub 读取失败");
+      } else {
+        syncPending = true;
+      }
+
+      if (syncPending) {
+        const nextRevision = Math.max(githubRevision + 1, Date.now());
+        const payload = {
+          revision: nextRevision,
+          updatedAt: new Date().toISOString(),
+          state
+        };
+        const body = {
+          message: `Sync planner data ${new Date().toISOString()}`,
+          content: encodeBase64Utf8(JSON.stringify(payload)),
+          branch: "main"
+        };
+        if (githubFileSha) body.sha = githubFileSha;
+        const pushResponse = await fetch(contentUrl, {
+          method: "PUT",
+          headers: githubHeaders(),
+          body: JSON.stringify(body),
+          signal: AbortSignal.timeout(15000)
+        });
+        if (!pushResponse.ok) throw new Error("GitHub 写入失败");
+        const pushed = await pushResponse.json();
+        githubFileSha = pushed.content?.sha || githubFileSha;
+        githubRevision = nextRevision;
+        syncPending = false;
+        setSyncStatus("synced", "云端已同步");
+        succeeded = true;
+        return true;
+      }
+
+      const remoteRevisionValue = Number(remote?.revision) || 0;
+      if (remote?.state && remoteRevisionValue > githubRevision && !syncPending) {
+        githubRevision = remoteRevisionValue;
+        applySyncedState(remote.state);
+      } else if (!githubRevision) {
+        githubRevision = remoteRevisionValue;
+      }
+      setSyncStatus("synced", "云端已同步");
+      succeeded = true;
+    } catch (error) {
+      setSyncStatus("offline", syncPending ? "云端待同步" : "云同步失败");
+      console.warn("GitHub sync unavailable:", error.message);
+    } finally {
+      syncInFlight = false;
+    }
+    return succeeded;
+  }
+
   async function syncActive() {
-    if (cloudSession?.access_token) {
+    if (githubToken) {
+      await syncWithGitHub();
+    } else if (cloudSession?.access_token) {
       await syncWithSupabase();
     } else {
       await syncWithServer();
@@ -10383,7 +10485,9 @@ body::before {
     }
     setSyncStatus("syncing", "同步中");
     syncReady = true;
-    if (cloudSession?.access_token) {
+    if (githubToken) {
+      await syncWithGitHub();
+    } else if (cloudSession?.access_token) {
       await syncWithSupabase();
     } else {
       await syncWithServer();
@@ -12050,30 +12154,34 @@ body::before {
   }
 
   function openCloudSyncModal() {
-    const connected = Boolean(cloudSession?.access_token);
+    const connected = Boolean(githubToken);
     openModal({
       title: "云端同步",
-      kicker: "SUPABASE CLOUD",
+      kicker: "GITHUB PRIVATE CLOUD",
       html: `
         <form data-form="cloud-sync">
           <p class="mini-modal-copy">${connected
-            ? "这台设备已连接云端。其他设备输入同一个同步码后，会读取相同的日程与打卡记录。"
-            : "输入一个只有你知道的同步码。每台设备输入同一组同步码，就会连接到同一个云端账号。"}</p>
+            ? "这台设备已连接 GitHub 私有云仓库。其他设备使用自己的 GitHub 令牌即可读取相同数据。"
+            : "云端数据保存在私有 GitHub 仓库中。请创建一个仅限该仓库 Contents 读写权限的 fine-grained token。"}</p>
           ${connected ? `
             <div class="cloud-connected-panel">
-              <span>云端账号</span>
-              <b>${escapeHtml(String(cloudSession.user_id).slice(0, 8).toUpperCase())}</b>
+              <span>私有云仓库</span>
+              <b>${GITHUB_SYNC_OWNER}/${GITHUB_SYNC_REPO}</b>
               <small>状态：${escapeHtml($("#syncStatusText")?.textContent || "已连接")}</small>
             </div>
           ` : `
             <div class="form-grid">
               <div class="form-field full">
-                <label for="cloudSyncCode">云同步码 <small>至少 12 个字符</small></label>
-                <input class="input" id="cloudSyncCode" name="syncCode" required minlength="12" autocomplete="off" spellcheck="false" placeholder="例如 SLV-ABCDE-FGHJK-MNPQR">
+                <label for="githubSyncToken">GitHub fine-grained token</label>
+                <input class="input" id="githubSyncToken" name="githubToken" type="password" required autocomplete="off" spellcheck="false" placeholder="github_pat_...">
               </div>
             </div>
-            <button class="small-action cloud-code-button" type="button" data-action="generate-cloud-code">生成并复制随机同步码</button>
-            <p class="form-help">同步码不会上传到服务器，只会转换成 Supabase 登录凭据。请妥善保存，遗忘后无法恢复同一份云端数据。</p>
+            <p class="form-help">
+              在 GitHub 的 <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener">Fine-grained tokens</a>
+              页面创建令牌，只选择私有仓库 <b>${GITHUB_SYNC_OWNER}/${GITHUB_SYNC_REPO}</b>，
+              并将 Repository permissions → Contents 设为 Read and write。
+            </p>
+            <p class="form-help">令牌只保存在当前设备浏览器中，不会写入网页代码。</p>
           `}
           <div class="form-actions">
             ${connected ? `
@@ -12089,17 +12197,27 @@ body::before {
 
   async function handleCloudSyncSubmit(form) {
     const data = new FormData(form);
-    const code = String(data.get("syncCode") || "").trim();
+    const token = String(data.get("githubToken") || "").trim();
     const submit = form.querySelector('button[type="submit"]');
     if (submit) {
       submit.disabled = true;
       submit.textContent = "正在连接…";
     }
     try {
-      await connectCloudWithCode(code);
+      if (!["github_pat_", "ghp_", "gho_"].some((prefix) => token.startsWith(prefix))) {
+        throw new Error("请输入有效 GitHub 访问令牌");
+      }
+      const previousToken = githubToken;
+      githubToken = token;
+      const ok = await syncWithGitHub();
+      if (!ok) {
+        githubToken = previousToken;
+        throw new Error("无法读取私有云仓库，请检查仓库和 Contents 权限");
+      }
+      localStorage.setItem(GITHUB_TOKEN_KEY, githubToken);
       closeModal();
       renderAll();
-      showToast("云同步已连接", "其他设备输入同一同步码即可共享数据。", "check");
+      showToast("云同步已连接", "已连接到 GitHub 私有云仓库。", "check");
     } catch (error) {
       showToast("云同步连接失败", error.message, "bell");
       if (submit) {
@@ -12419,10 +12537,12 @@ body::before {
       showToast("同步码已生成", "已复制到剪贴板，请妥善保存。", "check");
     }
     if (action === "sync-cloud-now") {
-      syncWithSupabase().then(() => showToast("云端同步完成", $("#syncStatusText")?.textContent || "", "check"));
+      syncWithGitHub().then((ok) => showToast(ok ? "云端同步完成" : "云同步失败", $("#syncStatusText")?.textContent || "", "check"));
     }
     if (action === "disconnect-cloud") {
       if (window.confirm("断开后，此设备会保留本地数据，但不再与其他设备同步。确定继续吗？")) {
+        githubToken = "";
+        localStorage.removeItem(GITHUB_TOKEN_KEY);
         persistCloudSession(null);
         syncPending = false;
         closeModal();
