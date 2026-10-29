@@ -1,4 +1,4 @@
-const CACHE_NAME = "suslov-time-plan-v1";
+const CACHE_NAME = "suslov-time-plan-v2";
 const APP_SHELL = [
   "./",
   "./index.html",

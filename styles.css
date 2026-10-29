@@ -513,6 +513,7 @@ svg {
   font-size: 8px;
   font-weight: 800;
   white-space: nowrap;
+  cursor: pointer;
 }
 
 .sync-state i {
@@ -3993,6 +3994,38 @@ svg {
   color: #8f978e;
   font-size: 9px;
   line-height: 1.5;
+}
+
+.cloud-code-button {
+  margin-top: 10px;
+}
+
+.cloud-connected-panel {
+  display: grid;
+  gap: 3px;
+  padding: 16px;
+  color: #fff8ec;
+  background: #111;
+  border-left: 7px solid #d0091b;
+  clip-path: polygon(0 0, 100% 0, 97% 100%, 0 100%);
+}
+
+.cloud-connected-panel span {
+  color: #ffe45b;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: .1em;
+}
+
+.cloud-connected-panel b {
+  font-family: "Arial Black", "Cascadia Mono", monospace;
+  font-size: 24px;
+  letter-spacing: .08em;
+}
+
+.cloud-connected-panel small {
+  color: rgba(255, 248, 236, .6);
+  font-size: 9px;
 }
 
 .form-actions {

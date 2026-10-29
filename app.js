@@ -4,6 +4,9 @@
   const STORAGE_KEY = "sunny-farm-planner-v1";
   const DATE_MARKER_KEY = "time-plan-last-seen-date";
   const SYNC_ENDPOINT = "/api/state";
+  const SUPABASE_URL = "https://rfdomwrugsgkkclflucz.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_7OkfpeKBiBOHQc77uDRv4A_0TCFXB10";
+  const CLOUD_SESSION_KEY = "suslov-cloud-session-v1";
   const DAY_NAMES = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
   const DAY_FULL = ["星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"];
   const DAY_SHORT = ["一", "二", "三", "四", "五", "六", "日"];
@@ -412,6 +415,14 @@
   let syncPending = false;
   let remoteRevision = 0;
   let syncTimer = null;
+  let cloudRevision = 0;
+  let cloudSession = (() => {
+    try {
+      return JSON.parse(localStorage.getItem(CLOUD_SESSION_KEY) || "null");
+    } catch {
+      return null;
+    }
+  })();
   const notifiedKeys = new Set();
 
   function saveState() {
@@ -434,7 +445,7 @@
     syncPending = true;
     setSyncStatus("syncing", "同步中");
     clearTimeout(syncTimer);
-    syncTimer = setTimeout(() => syncWithServer(), 300);
+    syncTimer = setTimeout(() => syncActive(), 300);
   }
 
   function applySyncedState(remoteState) {
@@ -453,6 +464,192 @@
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     ensureAllEventLocations();
     renderAll();
+  }
+
+  function persistCloudSession(session) {
+    cloudSession = session;
+    if (session) {
+      localStorage.setItem(CLOUD_SESSION_KEY, JSON.stringify(session));
+    } else {
+      localStorage.removeItem(CLOUD_SESSION_KEY);
+    }
+  }
+
+  function cloudHeaders(accessToken = cloudSession?.access_token) {
+    return {
+      "apikey": SUPABASE_KEY,
+      "Authorization": `Bearer ${accessToken}`,
+      "Content-Type": "application/json"
+    };
+  }
+
+  async function cloudAuth(path, body, accessToken = SUPABASE_KEY) {
+    const response = await fetch(`${SUPABASE_URL}/auth/v1/${path}`, {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Authorization": `Bearer ${accessToken}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(12000)
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error(payload.msg || payload.error_description || payload.message || "Supabase authentication failed");
+      error.status = response.status;
+      error.code = payload.error_code || payload.code;
+      throw error;
+    }
+    return payload;
+  }
+
+  function normalizeCloudSession(payload) {
+    if (!payload?.access_token || !payload?.refresh_token || !payload?.user?.id) return null;
+    return {
+      access_token: payload.access_token,
+      refresh_token: payload.refresh_token,
+      expires_at: Date.now() + (Number(payload.expires_in) || 3600) * 1000,
+      user_id: payload.user.id
+    };
+  }
+
+  async function refreshCloudSession() {
+    if (!cloudSession?.refresh_token) throw new Error("Cloud session missing");
+    const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
+      method: "POST",
+      headers: {
+        "apikey": SUPABASE_KEY,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ refresh_token: cloudSession.refresh_token }),
+      signal: AbortSignal.timeout(12000)
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      persistCloudSession(null);
+      throw new Error(payload.msg || "Cloud session expired");
+    }
+    const normalized = normalizeCloudSession(payload);
+    if (!normalized) throw new Error("Cloud refresh response invalid");
+    persistCloudSession(normalized);
+  }
+
+  async function ensureCloudSession() {
+    if (!cloudSession?.access_token) throw new Error("Cloud sync is not connected");
+    if (Number(cloudSession.expires_at || 0) - Date.now() < 60000) {
+      await refreshCloudSession();
+    }
+    return cloudSession;
+  }
+
+  async function deriveCloudCredentials(code) {
+    const normalized = String(code || "").trim();
+    if (normalized.length < 12) throw new Error("同步码至少需要 12 个字符");
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(`suslov-cloud:${normalized}`));
+    const hex = [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+    return {
+      email: `sync-${hex.slice(0, 40)}@example.com`,
+      password: `${hex.slice(40, 64)}Aa1!`
+    };
+  }
+
+  async function connectCloudWithCode(code) {
+    const credentials = await deriveCloudCredentials(code);
+    let payload;
+    try {
+      payload = await cloudAuth("token?grant_type=password", {
+        email: credentials.email,
+        password: credentials.password
+      });
+    } catch (signInError) {
+      try {
+        payload = await cloudAuth("signup", {
+          email: credentials.email,
+          password: credentials.password
+        });
+      } catch (signUpError) {
+        throw new Error(signUpError.message || signInError.message);
+      }
+    }
+    const session = normalizeCloudSession(payload);
+    if (!session) throw new Error("云端账号已创建，但未返回登录会话。请检查 Supabase Email 自动确认设置。");
+    persistCloudSession(session);
+    cloudRevision = 0;
+    syncPending = false;
+    await syncWithSupabase();
+  }
+
+  async function syncWithSupabase() {
+    if (!cloudSession?.access_token || syncInFlight) return;
+    syncInFlight = true;
+    try {
+      setSyncStatus("syncing", "同步中");
+      const session = await ensureCloudSession();
+      const userId = session.user_id;
+      let currentRevision = cloudRevision;
+
+      if (syncPending) {
+        const nextRevision = Math.max(currentRevision + 1, Date.now());
+        const pushResponse = await fetch(`${SUPABASE_URL}/rest/v1/planner_states?on_conflict=user_id`, {
+          method: "POST",
+          headers: {
+            ...cloudHeaders(session.access_token),
+            "Prefer": "resolution=merge-duplicates,return=minimal"
+          },
+          body: JSON.stringify([{
+            user_id: userId,
+            state,
+            revision: nextRevision,
+            updated_at: new Date().toISOString()
+          }]),
+          signal: AbortSignal.timeout(12000)
+        });
+        if (!pushResponse.ok) throw new Error("Cloud push failed");
+        cloudRevision = nextRevision;
+        currentRevision = nextRevision;
+        syncPending = false;
+      }
+
+      const pullResponse = await fetch(
+        `${SUPABASE_URL}/rest/v1/planner_states?select=state,revision&user_id=eq.${encodeURIComponent(userId)}&limit=1`,
+        {
+          headers: cloudHeaders(session.access_token),
+          cache: "no-store",
+          signal: AbortSignal.timeout(12000)
+        }
+      );
+      if (!pullResponse.ok) throw new Error("Cloud pull failed");
+      const rows = await pullResponse.json();
+      if (!rows.length) {
+        syncPending = true;
+        setSyncStatus("syncing", "同步中");
+        syncInFlight = false;
+        await syncWithSupabase();
+        return;
+      }
+      const remoteRevisionValue = Number(rows[0].revision) || 0;
+      if (remoteRevisionValue > currentRevision && !syncPending) {
+        cloudRevision = remoteRevisionValue;
+        applySyncedState(rows[0].state);
+      } else if (!cloudRevision) {
+        cloudRevision = remoteRevisionValue;
+      }
+      setSyncStatus("synced", "云端已同步");
+    } catch (error) {
+      setSyncStatus("offline", syncPending ? "云端待同步" : "云端不可用");
+      console.warn("Cloud sync unavailable:", error.message);
+    } finally {
+      syncInFlight = false;
+    }
+  }
+
+  async function syncActive() {
+    if (cloudSession?.access_token) {
+      await syncWithSupabase();
+    } else {
+      await syncWithServer();
+    }
   }
 
   async function syncWithServer() {
@@ -510,8 +707,12 @@
     }
     setSyncStatus("syncing", "同步中");
     syncReady = true;
-    await syncWithServer();
-    setInterval(syncWithServer, 8000);
+    if (cloudSession?.access_token) {
+      await syncWithSupabase();
+    } else {
+      await syncWithServer();
+    }
+    setInterval(syncActive, 8000);
   }
 
   function showToast(title, message = "", iconName = "check") {
@@ -2165,6 +2366,73 @@
     });
   }
 
+  function generateCloudCode() {
+    const bytes = crypto.getRandomValues(new Uint8Array(15));
+    const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    const raw = [...bytes].map((byte) => alphabet[byte % alphabet.length]).join("");
+    return `SLV-${raw.slice(0, 5)}-${raw.slice(5, 10)}-${raw.slice(10, 15)}`;
+  }
+
+  function openCloudSyncModal() {
+    const connected = Boolean(cloudSession?.access_token);
+    openModal({
+      title: "云端同步",
+      kicker: "SUPABASE CLOUD",
+      html: `
+        <form data-form="cloud-sync">
+          <p class="mini-modal-copy">${connected
+            ? "这台设备已连接云端。其他设备输入同一个同步码后，会读取相同的日程与打卡记录。"
+            : "输入一个只有你知道的同步码。每台设备输入同一组同步码，就会连接到同一个云端账号。"}</p>
+          ${connected ? `
+            <div class="cloud-connected-panel">
+              <span>云端账号</span>
+              <b>${escapeHtml(String(cloudSession.user_id).slice(0, 8).toUpperCase())}</b>
+              <small>状态：${escapeHtml($("#syncStatusText")?.textContent || "已连接")}</small>
+            </div>
+          ` : `
+            <div class="form-grid">
+              <div class="form-field full">
+                <label for="cloudSyncCode">云同步码 <small>至少 12 个字符</small></label>
+                <input class="input" id="cloudSyncCode" name="syncCode" required minlength="12" autocomplete="off" spellcheck="false" placeholder="例如 SLV-ABCDE-FGHJK-MNPQR">
+              </div>
+            </div>
+            <button class="small-action cloud-code-button" type="button" data-action="generate-cloud-code">生成并复制随机同步码</button>
+            <p class="form-help">同步码不会上传到服务器，只会转换成 Supabase 登录凭据。请妥善保存，遗忘后无法恢复同一份云端数据。</p>
+          `}
+          <div class="form-actions">
+            ${connected ? `
+              <button class="danger-link" type="button" data-action="disconnect-cloud">断开此设备</button>
+              <button class="btn secondary" type="button" data-action="sync-cloud-now">立即同步</button>
+            ` : `<button class="btn secondary" type="button" data-action="close-modal">取消</button>`}
+            ${connected ? "" : `<button class="btn primary" type="submit">连接云同步</button>`}
+          </div>
+        </form>`
+      , onSubmit: handleCloudSyncSubmit
+    });
+  }
+
+  async function handleCloudSyncSubmit(form) {
+    const data = new FormData(form);
+    const code = String(data.get("syncCode") || "").trim();
+    const submit = form.querySelector('button[type="submit"]');
+    if (submit) {
+      submit.disabled = true;
+      submit.textContent = "正在连接…";
+    }
+    try {
+      await connectCloudWithCode(code);
+      closeModal();
+      renderAll();
+      showToast("云同步已连接", "其他设备输入同一同步码即可共享数据。", "check");
+    } catch (error) {
+      showToast("云同步连接失败", error.message, "bell");
+      if (submit) {
+        submit.disabled = false;
+        submit.textContent = "连接云同步";
+      }
+    }
+  }
+
   function notificationActive() {
     return Boolean(state.settings.notifications && "Notification" in window && Notification.permission === "granted");
   }
@@ -2466,6 +2734,26 @@
     if (action === "habit-history") openHabitHistory();
     if (action === "close-modal") closeModal();
     if (action === "reset-demo") resetDemoData();
+    if (action === "cloud-settings") openCloudSyncModal();
+    if (action === "generate-cloud-code") {
+      const code = generateCloudCode();
+      const input = $("#cloudSyncCode");
+      if (input) input.value = code;
+      navigator.clipboard?.writeText(code).catch(() => {});
+      showToast("同步码已生成", "已复制到剪贴板，请妥善保存。", "check");
+    }
+    if (action === "sync-cloud-now") {
+      syncWithSupabase().then(() => showToast("云端同步完成", $("#syncStatusText")?.textContent || "", "check"));
+    }
+    if (action === "disconnect-cloud") {
+      if (window.confirm("断开后，此设备会保留本地数据，但不再与其他设备同步。确定继续吗？")) {
+        persistCloudSession(null);
+        syncPending = false;
+        closeModal();
+        setSyncStatus("local", "仅本机");
+        showToast("已断开云同步", "本地数据仍然保留。", "bell");
+      }
+    }
     if (action === "replay-date-transition") playDateTransition(addDays(now(), -1), now());
     if (action === "fill-sample") {
       $("#importText").value = "day,start,end,title,location,type\n周一,09:55,11:35,微积分 A1,H6112,lecture\n周二,08:00,09:40,线性代数 A,H2220,lecture\n周三,08:00,09:40,龙狮运动,H南区篮球场,lecture\n周四,18:30,20:10,第一哲学沉思集,H3306,lecture\n周五,13:30,15:10,高级英语,H2112B,lecture";
@@ -2534,10 +2822,10 @@
     if (!document.hidden) {
       renderAll();
       checkReminders();
-      syncWithServer();
+      syncActive();
     }
   });
-  window.addEventListener("online", syncWithServer);
+  window.addEventListener("online", syncActive);
 
   ensureAllEventLocations();
   saveState();
